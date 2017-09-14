@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SigningLab</string>
+    <string name="title_activity_fingerprint_auth">FingerprintAuthActivity</string>
+    <string name="fingerprint_auth">Fingerprint Auth</string>
+</resources>
