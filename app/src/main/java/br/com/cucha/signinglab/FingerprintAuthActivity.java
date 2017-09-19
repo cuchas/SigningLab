@@ -39,6 +39,8 @@ import java.util.List;
 
 public class FingerprintAuthActivity extends AppCompatActivity {
 
+
+
     public static final String ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore";
     public static final String KEY_ALIAS = "MY_ULTRA_SECRETE_KEY";
     private static final String SIGN_ALGORITHM = "SHA256withECDSA";
@@ -68,13 +70,15 @@ public class FingerprintAuthActivity extends AppCompatActivity {
 
         byte[] data = "Eduardo".getBytes();
 
-        byte[] bytes = signData(data);
+        byte[] signatureBytes = signData(data);
 
-        boolean verify = verify(data);
+        boolean verify = verify(data, signatureBytes);
 
-        if(verify) {
+        if(verify)
             Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
-        }
+        else
+            Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
+
     }
 
     private void setupRecycler() {
@@ -139,14 +143,13 @@ public class FingerprintAuthActivity extends AppCompatActivity {
             if(!(entry instanceof KeyStore.PrivateKeyEntry))
                 return null;
 
-
             Signature signature = Signature.getInstance(SIGN_ALGORITHM);
             signature.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
             signature.update(data);
 
-            byte[] signed = signature.sign();
+            byte[] signatureBytes = signature.sign();
 
-            return signed;
+            return signatureBytes;
 
         } catch (KeyStoreException e) {
             e.printStackTrace();
@@ -167,7 +170,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         return null;
     }
 
-    boolean verify(byte[] data) {
+    boolean verify(byte[] data, byte[] signatureBytes) {
 
         try {
             KeyStore keyStore = getKeyStore();
@@ -181,7 +184,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
             signature.initVerify(((KeyStore.PrivateKeyEntry) entry).getCertificate());
             signature.update(data);
 
-            return signature.verify(data);
+            return signature.verify(signatureBytes);
 
         } catch (KeyStoreException e) {
             e.printStackTrace();
