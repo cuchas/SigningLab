@@ -1,11 +1,17 @@
 package br.com.cucha.signinglab;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.hardware.fingerprint.FingerprintManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -39,11 +45,10 @@ import java.util.List;
 
 public class FingerprintAuthActivity extends AppCompatActivity {
 
-
-
     public static final String ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore";
     public static final String KEY_ALIAS = "MY_ULTRA_SECRETE_KEY";
     private static final String SIGN_ALGORITHM = "SHA256withECDSA";
+    private static final int REQUEST_CODE_FINGERPRINT_PERMISSION = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +71,48 @@ public class FingerprintAuthActivity extends AppCompatActivity {
     }
 
     private void onSingClick() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+            int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);
+
+            if(permission == PackageManager.PERMISSION_DENIED) {
+
+                String[] permissions = new String[] { Manifest.permission.USE_FINGERPRINT };
+
+                requestPermissions(permissions, REQUEST_CODE_FINGERPRINT_PERMISSION);
+
+                return;
+            }
+
+            onFingerPrintPermission();
+        } else {
+
+            Toast.makeText(this, getString(R.string.no_fingerprint_support), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    private void onFingerPrintPermission() {
+
+        FingerprintManager fingerprintManager = (FingerprintManager)
+                getSystemService(Context.FINGERPRINT_SERVICE);
+
+        if(!fingerprintManager.isHardwareDetected()) {
+            onNoFingerPrintHardwareDetected();
+            return;
+        }
+
+        if(!fingerprintManager.hasEnrolledFingerprints()) {
+            onNoFingerPrintsEnrolled();
+            return;
+        }
+
+        authenticate(fingerprintManager);
+    }
+
+    private void authenticate(FingerprintManager fingerprintManager) {
         generateKey();
 
         byte[] data = "Eduardo".getBytes();
@@ -78,7 +125,14 @@ public class FingerprintAuthActivity extends AppCompatActivity {
             Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
         else
             Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
+    }
 
+    private void onNoFingerPrintsEnrolled() {
+        Toast.makeText(this, getString(R.string.no_fingerprint_enrolled), Toast.LENGTH_SHORT).show();
+    }
+
+    private void onNoFingerPrintHardwareDetected() {
+        Toast.makeText(this, getString(R.string.no_fingerprint_hardware), Toast.LENGTH_SHORT).show();
     }
 
     private void setupRecycler() {
@@ -223,6 +277,23 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         }
 
         return null;
+    }
+
+    @SuppressWarnings("NewApi")
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if(requestCode ==  REQUEST_CODE_FINGERPRINT_PERMISSION) {
+            for (int i = 0; i < permissions.length; i++) {
+                if(permissions[i].equals(Manifest.permission.USE_FINGERPRINT) &&
+                        grantResults[i] == PackageManager.PERMISSION_DENIED)
+
+                    return;
+            }
+
+            onFingerPrintPermission();
+        }
     }
 
     @NonNull

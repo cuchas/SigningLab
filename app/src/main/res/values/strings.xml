@@ -2,4 +2,7 @@
     <string name="app_name">SigningLab</string>
     <string name="title_activity_fingerprint_auth">FingerprintAuthActivity</string>
     <string name="fingerprint_auth">Fingerprint Auth</string>
+    <string name="no_fingerprint_support">No fingerprint support</string>
+    <string name="no_fingerprint_hardware">No fingerprint hardware detected</string>
+    <string name="no_fingerprint_enrolled">No fingerprints enrolled</string>
 </resources>
