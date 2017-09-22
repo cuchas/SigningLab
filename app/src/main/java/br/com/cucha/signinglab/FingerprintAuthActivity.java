@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -37,17 +38,24 @@ import java.security.NoSuchProviderException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+
+import static android.security.keystore.KeyProperties.KEY_ALGORITHM_AES;
+
 public class FingerprintAuthActivity extends AppCompatActivity {
 
     public static final String ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore";
     public static final String KEY_ALIAS = "MY_ULTRA_SECRETE_KEY";
-    private static final String SIGN_ALGORITHM = "SHA256withECDSA";
+    public static final String KEY_ALIAS_NEW = "MY_NEW_ULTRA_SECRETE_KEY";
+    private static final String HASH_SHA256withECDSA_ALGORITHM = "SHA256withECDSA";
     private static final int REQUEST_CODE_FINGERPRINT_PERMISSION = 1001;
 
     @Override
@@ -72,6 +80,8 @@ public class FingerprintAuthActivity extends AppCompatActivity {
 
     private void onSingClick() {
 
+        generateKey();
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
             int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);
@@ -86,6 +96,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
             }
 
             onFingerPrintPermission();
+
         } else {
 
             Toast.makeText(this, getString(R.string.no_fingerprint_support), Toast.LENGTH_SHORT).show();
@@ -112,19 +123,76 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         authenticate(fingerprintManager);
     }
 
+    @SuppressWarnings("MissingPermission")
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void authenticate(FingerprintManager fingerprintManager) {
-        generateKey();
 
-        byte[] data = "Eduardo".getBytes();
+        try {
 
-        byte[] signatureBytes = signData(data);
+            Key key = getKeyStore().getKey(KEY_ALIAS_NEW, null);
 
-        boolean verify = verify(data, signatureBytes);
+            Cipher cipher = Cipher.getInstance(KEY_ALGORITHM_AES + "/"
+                    + KeyProperties.BLOCK_MODE_CBC + "/"
+                    + KeyProperties.ENCRYPTION_PADDING_PKCS7);
 
-        if(verify)
-            Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
-        else
-            Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+
+            FingerprintManager.CryptoObject cryptoObject = new FingerprintManager.CryptoObject(cipher);
+
+            fingerprintManager.authenticate(cryptoObject, null, 0, new FingerprintManager.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationError(int errorCode, CharSequence errString) {
+                    super.onAuthenticationError(errorCode, errString);
+                    Toast.makeText(FingerprintAuthActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onAuthenticationHelp(int helpCode, CharSequence helpString) {
+                    super.onAuthenticationHelp(helpCode, helpString);
+                    Toast.makeText(FingerprintAuthActivity.this, "Auth help", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+                    super.onAuthenticationSucceeded(result);
+                    Toast.makeText(FingerprintAuthActivity.this, "Auth Success", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onAuthenticationFailed() {
+                    super.onAuthenticationFailed();
+                    Toast.makeText(FingerprintAuthActivity.this, "Auth fail", Toast.LENGTH_SHORT).show();
+                }
+            }, null);
+
+//            generateKey();
+//
+//            byte[] data = "Eduardo".getBytes();
+//
+//            byte[] signatureBytes = signData(data);
+//
+//            boolean verify = verify(data, signatureBytes);
+//
+//            if(verify)
+//                Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
+//            else
+//                Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (UnrecoverableKeyException e) {
+            e.printStackTrace();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
     }
 
     private void onNoFingerPrintsEnrolled() {
@@ -158,15 +226,17 @@ public class FingerprintAuthActivity extends AppCompatActivity {
 
                 //Importante escolha do algoritmo da chave
                 //Existência do algoritmo na versão do Android
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEYSTORE_PROVIDER);
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance(KEY_ALGORITHM_AES, ANDROID_KEYSTORE_PROVIDER);
 
 
                 //Purpose da key (crypto, temp ou auth), não pode ser alterado pós geração da chave
                 //O que são, uso de bitwise
                 //Digest - função geradora de hashes usado na criptografia das chaves
                 KeyGenParameterSpec keyGenParameterSpec =
-                        new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                        new KeyGenParameterSpec.Builder(KEY_ALIAS_NEW, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
                                 .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                                .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                                 .build();
 
                 //Pode estourar exceção por spec inválida
@@ -192,12 +262,12 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         try {
             KeyStore keyStore = getKeyStore();
 
-            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS_NEW, null);
 
             if(!(entry instanceof KeyStore.PrivateKeyEntry))
                 return null;
 
-            Signature signature = Signature.getInstance(SIGN_ALGORITHM);
+            Signature signature = Signature.getInstance(HASH_SHA256withECDSA_ALGORITHM);
             signature.initSign(((KeyStore.PrivateKeyEntry) entry).getPrivateKey());
             signature.update(data);
 
@@ -229,12 +299,12 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         try {
             KeyStore keyStore = getKeyStore();
 
-            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS_NEW, null);
 
             if(!(entry instanceof KeyStore.PrivateKeyEntry))
                 return false;
 
-            Signature signature = Signature.getInstance(SIGN_ALGORITHM);
+            Signature signature = Signature.getInstance(HASH_SHA256withECDSA_ALGORITHM);
             signature.initVerify(((KeyStore.PrivateKeyEntry) entry).getCertificate());
             signature.update(data);
 
