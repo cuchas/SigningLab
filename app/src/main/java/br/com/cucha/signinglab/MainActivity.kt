@@ -11,7 +11,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         findViewById<Button>(R.id.button_fingerprint_main).setOnClickListener {
-            val intent = FingerprintAuthActivity.newIntent(applicationContext)
+//            val intent = KeyListActivity.newIntent(applicationContext)
+//            startActivity(intent)
+
+            val intent = AuthWithFingerprintActivity.newIntent(this)
             startActivity(intent)
         }
     }

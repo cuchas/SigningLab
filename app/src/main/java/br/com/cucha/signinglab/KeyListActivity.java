@@ -16,6 +16,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,161 +47,26 @@ import java.util.Enumeration;
 import java.util.List;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 
 import static android.security.keystore.KeyProperties.KEY_ALGORITHM_AES;
 
-public class FingerprintAuthActivity extends AppCompatActivity {
+public class KeyListActivity extends AppCompatActivity {
 
     public static final String ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore";
     public static final String KEY_ALIAS = "MY_ULTRA_SECRETE_KEY";
-    public static final String KEY_ALIAS_NEW = "MY_NEW_ULTRA_SECRETE_KEY";
     private static final String HASH_SHA256withECDSA_ALGORITHM = "SHA256withECDSA";
-    private static final int REQUEST_CODE_FINGERPRINT_PERMISSION = 1001;
+    private static final String TAG = KeyListActivity.class.getName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_fingerprint_auth);
+        setContentView(R.layout.activity_keylist);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         setupRecycler();
-        setupFab();
-    }
-
-    private void setupFab() {
-        findViewById(R.id.fab).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onSingClick();
-            }
-        });
-    }
-
-    private void onSingClick() {
-
-        generateKey();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-            int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);
-
-            if(permission == PackageManager.PERMISSION_DENIED) {
-
-                String[] permissions = new String[] { Manifest.permission.USE_FINGERPRINT };
-
-                requestPermissions(permissions, REQUEST_CODE_FINGERPRINT_PERMISSION);
-
-                return;
-            }
-
-            onFingerPrintPermission();
-
-        } else {
-
-            Toast.makeText(this, getString(R.string.no_fingerprint_support), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @SuppressWarnings("MissingPermission")
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    private void onFingerPrintPermission() {
-
-        FingerprintManager fingerprintManager = (FingerprintManager)
-                getSystemService(Context.FINGERPRINT_SERVICE);
-
-        if(!fingerprintManager.isHardwareDetected()) {
-            onNoFingerPrintHardwareDetected();
-            return;
-        }
-
-        if(!fingerprintManager.hasEnrolledFingerprints()) {
-            onNoFingerPrintsEnrolled();
-            return;
-        }
-
-        authenticate(fingerprintManager);
-    }
-
-    @SuppressWarnings("MissingPermission")
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    private void authenticate(FingerprintManager fingerprintManager) {
-
-        try {
-
-            Key key = getKeyStore().getKey(KEY_ALIAS_NEW, null);
-
-            Cipher cipher = Cipher.getInstance(KEY_ALGORITHM_AES + "/"
-                    + KeyProperties.BLOCK_MODE_CBC + "/"
-                    + KeyProperties.ENCRYPTION_PADDING_PKCS7);
-
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-
-            FingerprintManager.CryptoObject cryptoObject = new FingerprintManager.CryptoObject(cipher);
-
-            fingerprintManager.authenticate(cryptoObject, null, 0, new FingerprintManager.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationError(int errorCode, CharSequence errString) {
-                    super.onAuthenticationError(errorCode, errString);
-                    Toast.makeText(FingerprintAuthActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onAuthenticationHelp(int helpCode, CharSequence helpString) {
-                    super.onAuthenticationHelp(helpCode, helpString);
-                    Toast.makeText(FingerprintAuthActivity.this, "Auth help", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
-                    Toast.makeText(FingerprintAuthActivity.this, "Auth Success", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onAuthenticationFailed() {
-                    super.onAuthenticationFailed();
-                    Toast.makeText(FingerprintAuthActivity.this, "Auth fail", Toast.LENGTH_SHORT).show();
-                }
-            }, null);
-
-//            generateKey();
-//
-//            byte[] data = "Eduardo".getBytes();
-//
-//            byte[] signatureBytes = signData(data);
-//
-//            boolean verify = verify(data, signatureBytes);
-//
-//            if(verify)
-//                Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
-//            else
-//                Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
-
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (CertificateException e) {
-            e.printStackTrace();
-        } catch (UnrecoverableKeyException e) {
-            e.printStackTrace();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void onNoFingerPrintsEnrolled() {
-        Toast.makeText(this, getString(R.string.no_fingerprint_enrolled), Toast.LENGTH_SHORT).show();
-    }
-
-    private void onNoFingerPrintHardwareDetected() {
-        Toast.makeText(this, getString(R.string.no_fingerprint_hardware), Toast.LENGTH_SHORT).show();
     }
 
     private void setupRecycler() {
@@ -219,7 +85,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         }
     }
 
-    KeyPair generateKey() {
+    KeyPair generateKeyPair() {
         try {
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -233,7 +99,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
                 //O que são, uso de bitwise
                 //Digest - função geradora de hashes usado na criptografia das chaves
                 KeyGenParameterSpec keyGenParameterSpec =
-                        new KeyGenParameterSpec.Builder(KEY_ALIAS_NEW, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                        new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
                                 .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
                                 .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
                                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
@@ -262,7 +128,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         try {
             KeyStore keyStore = getKeyStore();
 
-            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS_NEW, null);
+            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
 
             if(!(entry instanceof KeyStore.PrivateKeyEntry))
                 return null;
@@ -299,7 +165,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         try {
             KeyStore keyStore = getKeyStore();
 
-            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS_NEW, null);
+            KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
 
             if(!(entry instanceof KeyStore.PrivateKeyEntry))
                 return false;
@@ -349,23 +215,6 @@ public class FingerprintAuthActivity extends AppCompatActivity {
         return null;
     }
 
-    @SuppressWarnings("NewApi")
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if(requestCode ==  REQUEST_CODE_FINGERPRINT_PERMISSION) {
-            for (int i = 0; i < permissions.length; i++) {
-                if(permissions[i].equals(Manifest.permission.USE_FINGERPRINT) &&
-                        grantResults[i] == PackageManager.PERMISSION_DENIED)
-
-                    return;
-            }
-
-            onFingerPrintPermission();
-        }
-    }
-
     @NonNull
     private KeyStore getKeyStore() throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
         KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE_PROVIDER);
@@ -376,7 +225,7 @@ public class FingerprintAuthActivity extends AppCompatActivity {
 
     @NotNull
     public static Intent newIntent(@Nullable Context applicationContext) {
-        return new Intent(applicationContext, FingerprintAuthActivity.class);
+        return new Intent(applicationContext, KeyListActivity.class);
     }
 
     static class KeyView extends RecyclerView.ViewHolder {
