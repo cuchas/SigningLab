@@ -1,6 +1,7 @@
 package br.com.cucha.signinglab;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -51,7 +52,7 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
 
 //        Key key = generateKey();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 
             int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);
 
@@ -98,7 +99,7 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
     }
 
     @SuppressWarnings("MissingPermission")
-    @RequiresApi(api = Build.VERSION_CODES.M)
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void onFingerPrintAccessAllowed() {
 
         FingerprintManager fingerprintManager = (FingerprintManager)
@@ -114,53 +115,103 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
             return;
         }
 
-        authenticate(fingerprintManager);
+        try {
+            KeyStore keyStore = getKeyStore();
+            Key key = keyStore.getKey(KEY_ALIAS_NEW, null);
+
+            if(key == null) {
+                Toast.makeText(this, "Generating key", Toast.LENGTH_SHORT).show();
+                key = generateKey();
+            }
+
+            Cipher cipher = getCipher(key);
+
+            authenticate(fingerprintManager, cipher);
+
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (UnrecoverableKeyException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            onInvalidKey(fingerprintManager);
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void onInvalidKey(FingerprintManager fingerprintManager) {
+        Key key = generateKey();
+
+        Toast.makeText(this, "Invalid key, recreating...", Toast.LENGTH_SHORT).show();
+
+        try {
+            Cipher cipher = getCipher(key);
+
+            authenticate(fingerprintManager, cipher);
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @NonNull
+    @SuppressLint("InlinedApi")
+    private Cipher getCipher(Key key) throws NoSuchAlgorithmException,
+            NoSuchPaddingException, InvalidKeyException {
+
+        Cipher cipher = Cipher.getInstance(KEY_ALGORITHM_AES + "/"
+                + KeyProperties.BLOCK_MODE_CBC + "/"
+                + KeyProperties.ENCRYPTION_PADDING_PKCS7);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        return cipher;
     }
 
     @SuppressWarnings("MissingPermission")
     @RequiresApi(api = Build.VERSION_CODES.M)
-    private void authenticate(FingerprintManager fingerprintManager) {
+    private void authenticate(FingerprintManager fingerprintManager, Cipher cipher) {
 
-        try {
+        FingerprintManager.CryptoObject cryptoObject = new FingerprintManager.CryptoObject(cipher);
 
-            Key key = getKeyStore().getKey(KEY_ALIAS_NEW, null);
+        fingerprintManager.authenticate(cryptoObject, null, 0, new FingerprintManager.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationError(int errorCode, CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                Log.e(TAG, "onAuthenticationError: " + errString);
+                Toast.makeText(AuthWithFingerprintActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
+            }
 
-            Cipher cipher = Cipher.getInstance(KEY_ALGORITHM_AES + "/"
-                    + KeyProperties.BLOCK_MODE_CBC + "/"
-                    + KeyProperties.ENCRYPTION_PADDING_PKCS7);
+            @Override
+            public void onAuthenticationHelp(int helpCode, CharSequence helpString) {
+                super.onAuthenticationHelp(helpCode, helpString);
+                Log.e(TAG, "onAuthenticationHelp: " +  helpString);
+                Toast.makeText(AuthWithFingerprintActivity.this, "Auth help", Toast.LENGTH_SHORT).show();
+            }
 
-            cipher.init(Cipher.ENCRYPT_MODE, key);
+            @Override
+            public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                Toast.makeText(AuthWithFingerprintActivity.this, "Auth Success", Toast.LENGTH_SHORT).show();
+                finish();
+            }
 
-            FingerprintManager.CryptoObject cryptoObject = new FingerprintManager.CryptoObject(cipher);
-
-            fingerprintManager.authenticate(cryptoObject, null, 0, new FingerprintManager.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationError(int errorCode, CharSequence errString) {
-                    super.onAuthenticationError(errorCode, errString);
-                    Log.e(TAG, "onAuthenticationError: " + errString);
-                    Toast.makeText(AuthWithFingerprintActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onAuthenticationHelp(int helpCode, CharSequence helpString) {
-                    super.onAuthenticationHelp(helpCode, helpString);
-                    Log.e(TAG, "onAuthenticationHelp: " +  helpString);
-                    Toast.makeText(AuthWithFingerprintActivity.this, "Auth help", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
-                    Toast.makeText(AuthWithFingerprintActivity.this, "Auth Success", Toast.LENGTH_SHORT).show();
-                    finish();
-                }
-
-                @Override
-                public void onAuthenticationFailed() {
-                    super.onAuthenticationFailed();
-                    Toast.makeText(AuthWithFingerprintActivity.this, "Auth fail", Toast.LENGTH_SHORT).show();
-                }
-            }, null);
+            @Override
+            public void onAuthenticationFailed() {
+                super.onAuthenticationFailed();
+                Toast.makeText(AuthWithFingerprintActivity.this, "Auth fail", Toast.LENGTH_SHORT).show();
+            }
+        }, null);
 
 //            generateKey();
 //
@@ -175,23 +226,9 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
 //            else
 //                Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
 
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (CertificateException e) {
-            e.printStackTrace();
-        } catch (UnrecoverableKeyException e) {
-            e.printStackTrace();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     Key generateKey() {
         try {
 
@@ -211,6 +248,7 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
                                 .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
                                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                                 .setUserAuthenticationRequired(true)
+                                .setInvalidatedByBiometricEnrollment(true)
                                 .build();
 
                 //Pode estourar exceção por spec inválida
