@@ -50,8 +50,6 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auth_with_fingerprint);
 
-//        Key key = generateKey();
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 
             int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);

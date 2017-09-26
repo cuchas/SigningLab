@@ -25,6 +25,10 @@
         <activity
             android:name=".AuthWithFingerprintActivity"
             android:theme="@style/AppTheme.ActivityDialog" />
+        <activity
+            android:name=".SignVerifyActivity"
+            android:label="@string/title_activity_sign_verify"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 
 </manifest>
