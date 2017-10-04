@@ -50,6 +50,10 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auth_with_fingerprint);
 
+        checkPermissionAndStart();
+    }
+
+    private void checkPermissionAndStart() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 
             int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_FINGERPRINT);
@@ -86,14 +90,6 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
 
             onFingerPrintAccessAllowed();
         }
-    }
-
-    private void onNoFingerPrintsEnrolled() {
-        Toast.makeText(this, getString(R.string.no_fingerprint_enrolled), Toast.LENGTH_SHORT).show();
-    }
-
-    private void onNoFingerPrintHardwareDetected() {
-        Toast.makeText(this, getString(R.string.no_fingerprint_hardware), Toast.LENGTH_SHORT).show();
     }
 
     @SuppressWarnings("MissingPermission")
@@ -141,6 +137,14 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
         } catch (NoSuchPaddingException e) {
             e.printStackTrace();
         }
+    }
+
+    private void onNoFingerPrintsEnrolled() {
+        Toast.makeText(this, getString(R.string.no_fingerprint_enrolled), Toast.LENGTH_SHORT).show();
+    }
+
+    private void onNoFingerPrintHardwareDetected() {
+        Toast.makeText(this, getString(R.string.no_fingerprint_hardware), Toast.LENGTH_SHORT).show();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -211,52 +215,35 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
             }
         }, null);
 
-//            generateKey();
-//
-//            byte[] data = "Eduardo".getBytes();
-//
-//            byte[] signatureBytes = signData(data);
-//
-//            boolean verify = verify(data, signatureBytes);
-//
-//            if(verify)
-//                Toast.makeText(this, "verified data", Toast.LENGTH_SHORT).show();
-//            else
-//                Toast.makeText(this, "data verification fail", Toast.LENGTH_SHORT).show();
-
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     Key generateKey() {
         try {
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            //Purpose da key (crypto, temp ou auth), não pode ser alterado pós geração da chave
+            //O que são, uso de bitwise
+            //Digest - função geradora de hashes usado na criptografia das chaves
+            KeyGenParameterSpec keyGenParameterSpec =
+                    new KeyGenParameterSpec
+                            .Builder(KEY_ALIAS_NEW, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                            .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                            .setUserAuthenticationRequired(true)
+                            .setUserAuthenticationValidityDurationSeconds(120)
+                            .setInvalidatedByBiometricEnrollment(true)
+                            .build();
 
-                //Importante escolha do algoritmo da chave
-                //Existência do algoritmo na versão do Android
-                KeyGenerator kpg = KeyGenerator.getInstance(KEY_ALGORITHM_AES, ANDROID_KEYSTORE_PROVIDER);
+            //Importante escolha do algoritmo da chave
+            //Existência do algoritmo na versão do Android
+            KeyGenerator kpg = KeyGenerator.getInstance(KEY_ALGORITHM_AES, ANDROID_KEYSTORE_PROVIDER);
 
+            //Pode estourar exceção por spec inválida
+            kpg.init(keyGenParameterSpec);
 
-                //Purpose da key (crypto, temp ou auth), não pode ser alterado pós geração da chave
-                //O que são, uso de bitwise
-                //Digest - função geradora de hashes usado na criptografia das chaves
-                KeyGenParameterSpec keyGenParameterSpec =
-                        new KeyGenParameterSpec
-                                .Builder(KEY_ALIAS_NEW, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                                .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                                .setUserAuthenticationRequired(true)
-                                .setUserAuthenticationValidityDurationSeconds(120)
-                                .setInvalidatedByBiometricEnrollment(true)
-                                .build();
+            Key key = kpg.generateKey();
 
-                //Pode estourar exceção por spec inválida
-                kpg.init(keyGenParameterSpec);
-
-                Key key = kpg.generateKey();
-
-                return key;
-            }
+            return key;
 
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();

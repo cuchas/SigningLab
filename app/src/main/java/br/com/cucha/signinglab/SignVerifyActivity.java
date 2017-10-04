@@ -1,5 +1,7 @@
 package br.com.cucha.signinglab;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -9,6 +11,11 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -25,12 +32,14 @@ import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 
 import static android.security.keystore.KeyProperties.KEY_ALGORITHM_AES;
+import static android.security.keystore.KeyProperties.KEY_ALGORITHM_EC;
 
 public class SignVerifyActivity extends AppCompatActivity {
 
     private static final String ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore";
     private static final String KEY_ALIAS = "MY_ULTRA_SECRETE_KEY";
     private static final String HASH_SHA256withECDSA_ALGORITHM = "SHA256withECDSA";
+    private static final String DATA = "Eduardo";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,13 +48,35 @@ public class SignVerifyActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
+        KeyPair keyPair = generateKeyPair();
+
+        byte[] pvt = keyPair.getPrivate().getEncoded();
+        byte[] pub = keyPair.getPublic().getEncoded();
+
+        TextView textPrivate = findViewById(R.id.text_private_key);
+        textPrivate.setText(String.valueOf(pvt));
+
+        TextView textPublic = findViewById(R.id.text_public_key);
+        textPublic.setText(String.valueOf(pub));
+
+        TextView textClean = findViewById(R.id.text_clean_data);
+        textClean.setText(DATA);
+
+        byte[] bytes = DATA.getBytes();
+
+        TextView textBytes = findViewById(R.id.text_bytes_data);
+        textBytes.setText(String.valueOf(bytes));
+
+        byte[] signatureBytes = signData(bytes);
+
+        TextView textSigned = findViewById(R.id.text_signed_data);
+        textSigned.setText(String.valueOf(signatureBytes));
+
+        findViewById(R.id.fab).setOnClickListener(view -> {
+            if(verify(bytes, signatureBytes))
+                Toast.makeText(this, "Looks legit...", Toast.LENGTH_SHORT).show();
+            else
+                Toast.makeText(this, "Falcatrua...", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -62,20 +93,17 @@ public class SignVerifyActivity extends AppCompatActivity {
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
 
-                //Importante escolha do algoritmo da chave
-                //Existência do algoritmo na versão do Android
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance(KEY_ALGORITHM_AES, ANDROID_KEYSTORE_PROVIDER);
-
-
                 //Purpose da key (crypto, temp ou auth), não pode ser alterado pós geração da chave
                 //O que são, uso de bitwise
                 //Digest - função geradora de hashes usado na criptografia das chaves
                 KeyGenParameterSpec keyGenParameterSpec =
                         new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
                                 .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                                .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                                 .build();
+
+                //Importante escolha do algoritmo da chave
+                //Existência do algoritmo na versão do Android
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance(KEY_ALGORITHM_EC, ANDROID_KEYSTORE_PROVIDER);
 
                 //Pode estourar exceção por spec inválida
                 kpg.initialize(keyGenParameterSpec);
@@ -167,4 +195,8 @@ public class SignVerifyActivity extends AppCompatActivity {
         return false;
     }
 
+    @NotNull
+    public static Intent newIntent(@Nullable Context applicationContext) {
+        return new Intent(applicationContext, SignVerifyActivity.class);
+    }
 }

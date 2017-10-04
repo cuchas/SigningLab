@@ -12,4 +12,11 @@
     <string name="pls_show_me_you_">Please show you are not someoneelse! :p</string>
     <string name="credential_confirmed">Credential confirmed</string>
     <string name="credential_confirm_failed">Credential confirm failed</string>
+    <string name="sign_verify">Sign / Verify</string>
+    <string name="clean_data">Clean Data:</string>
+    <string name="data_bytes">Data Bytes:</string>
+    <string name="signed_data_bytes">Signature Bytes:</string>
+    <string name="verify">Verify</string>
+    <string name="private_key">Private Key</string>
+    <string name="public_key">Public  Key</string>
 </resources>

@@ -16,26 +16,39 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.button_fingerprint_main).setOnClickListener {
-            val intent = AuthWithFingerprintActivity.newIntent(this)
-            startActivity(intent)
-        }
+        findViewById<Button>(R.id.button_fingerprint_main).setOnClickListener { startFingerAuth() }
 
-        findViewById<Button>(R.id.button_confirmcredential_main).setOnClickListener {
-            val keyguard = applicationContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        findViewById<Button>(R.id.button_confirmcredential_main).setOnClickListener { confirmCredential() }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val title = getString(R.string.are_you_yourself)
-                val description = getString(R.string.pls_show_me_you_)
+        findViewById<Button>(R.id.button_listkeys_main).setOnClickListener { listKeys() }
 
-                val intent = keyguard.createConfirmDeviceCredentialIntent(title, description)
-                startActivityForResult(intent, REQUEST_CONFIRM_CREDENTIAL)
-            }
-        }
+        findViewById<Button>(R.id.button_sign_main).setOnClickListener { startSignVerify() }
+    }
 
-        findViewById<Button>(R.id.button_listkeys_main).setOnClickListener {
-            val intent = KeyListActivity.newIntent(applicationContext)
-            startActivity(intent)
+    private fun startSignVerify() {
+        val intent = SignVerifyActivity.newIntent(applicationContext)
+        startActivity(intent)
+    }
+
+    private fun listKeys() {
+        val intent = KeyListActivity.newIntent(applicationContext)
+        startActivity(intent)
+    }
+
+    private fun startFingerAuth() {
+        val intent = AuthWithFingerprintActivity.newIntent(this)
+        startActivity(intent)
+    }
+
+    private fun confirmCredential() {
+        val keyguard = applicationContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val title = getString(R.string.are_you_yourself)
+            val description = getString(R.string.pls_show_me_you_)
+
+            val intent = keyguard.createConfirmDeviceCredentialIntent(title, description)
+            startActivityForResult(intent, REQUEST_CONFIRM_CREDENTIAL)
         }
     }
 

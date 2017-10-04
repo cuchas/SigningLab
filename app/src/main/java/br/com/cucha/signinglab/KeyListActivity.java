@@ -110,7 +110,9 @@ public class KeyListActivity extends AppCompatActivity {
 
     Enumeration<String> listKeys() {
         try {
-            KeyStore ks = getKeyStore();
+            //Pode estourar exceções de algorithmo inválido
+            KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE_PROVIDER);
+            ks.load(null);
             Enumeration<String> aliases = ks.aliases();
 
             return aliases;
@@ -126,13 +128,5 @@ public class KeyListActivity extends AppCompatActivity {
         }
 
         return null;
-    }
-
-    @NonNull
-    private KeyStore getKeyStore() throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
-        KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE_PROVIDER);
-        //Pode estourar exceções de algorithmo inválido
-        ks.load(null);
-        return ks;
     }
 }
