@@ -6,4 +6,10 @@
     <string name="no_fingerprint_hardware">No fingerprint hardware detected</string>
     <string name="no_fingerprint_enrolled">No fingerprints enrolled</string>
     <string name="title_activity_sign_verify">SignVerifyActivity</string>
+    <string name="list_keys">List keys</string>
+    <string name="confirm_credential">Confirm Credential</string>
+    <string name="are_you_yourself">Are you Yourself? :)</string>
+    <string name="pls_show_me_you_">Please show you are not someoneelse! :p</string>
+    <string name="credential_confirmed">Credential confirmed</string>
+    <string name="credential_confirm_failed">Credential confirm failed</string>
 </resources>
