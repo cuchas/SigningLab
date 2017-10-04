@@ -246,6 +246,7 @@ public class AuthWithFingerprintActivity extends AppCompatActivity {
                                 .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
                                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                                 .setUserAuthenticationRequired(true)
+                                .setUserAuthenticationValidityDurationSeconds(120)
                                 .setInvalidatedByBiometricEnrollment(true)
                                 .build();
 
